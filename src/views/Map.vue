@@ -10,6 +10,9 @@
 </template>
 
 <script>
+// 示例：引入 API 模块调用接口（以下为注释示例，实际使用时取消注释即可）
+// import { mapApi } from '@/api/index'
+
 export default {
   name: 'MapPage',
   data() {
@@ -28,6 +31,8 @@ export default {
   },
   mounted() {
     this.initMap()
+    // 示例：调用后端接口获取数据（以下为注释示例，实际使用时取消注释即可）
+    // this.fetchMapData()
   },
   methods: {
     initMap() {
@@ -71,7 +76,33 @@ export default {
           this.map = map
         }
       )
-    }
+    },
+
+    /**
+     * 示例：调用后端接口获取地图数据
+     * 以下为注释示例，实际使用时取消注释即可
+     */
+    // async fetchMapData() {
+    //   try {
+    //     // 示例 1：GET 请求
+    //     const res = await mapApi.getMapConfig()
+    //     console.log('地图配置:', res)
+    //
+    //     // 示例 2：POST 请求
+    //     const res2 = await mapApi.savePosition({
+    //       lng: 104.11,
+    //       lat: 37.52,
+    //       level: 4
+    //     })
+    //     console.log('保存位置:', res2)
+    //   } catch (error) {
+    //     // 错误已在 axios 拦截器统一处理
+    //     // 如果 token 过期，拦截器会自动通知小程序
+    //     if (error.message === 'TOKEN_EXPIRED') {
+    //       console.warn('Token 已过期，等待小程序处理...')
+    //     }
+    //   }
+    // }
   },
   beforeDestroy() {
     if (this.map) {

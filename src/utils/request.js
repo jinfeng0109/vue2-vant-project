@@ -1,6 +1,38 @@
 import axios from 'axios'
 import { Toast } from 'vant'
-import router from '@/router'
+
+/**
+ * 从 URL 获取 token
+ * 小程序 webview 嵌入时 URL 格式：xxx/map?token=xxx
+ */
+function getToken() {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('token') || ''
+}
+
+/**
+ * 通知小程序 token 过期
+ * 通过 window.postMessage 发送消息给小程序
+ */
+function notifyMiniProgramTokenExpired() {
+  // 通知小程序 token 过期
+  if (window.postMessage) {
+    window.postMessage({
+      type: 'TOKEN_EXPIRED',
+      message: '登录已过期，请重新登录'
+    }, '*')
+  }
+
+  // 同时尝试调用微信小程序的 postMessage API
+  if (typeof window.wxPostMessage === 'function') {
+    window.wxPostMessage({
+      type: 'TOKEN_EXPIRED',
+      message: '登录已过期，请重新登录'
+    })
+  }
+
+  console.warn('[TokenExpired] Authorization token 已过期，已通知小程序')
+}
 
 // 创建 axios 实例
 const service = axios.create({
@@ -11,15 +43,10 @@ const service = axios.create({
   }
 })
 
-// 是否正在刷新 token
-let isRefreshing = false
-// 重试队列
-let requestsQueue = []
-
 // 请求拦截器
 service.interceptors.request.use(
   config => {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
     }
@@ -36,13 +63,14 @@ service.interceptors.response.use(
   response => {
     const res = response.data
 
-    // 根据后端返回的 code 判断
+    // 根据后端返回的 code 判断（常见约定：code === 200 或 0 表示成功）
     if (res.code !== 200 && res.code !== 0) {
       Toast({ message: res.message || '请求失败', duration: 2000 })
 
-      // 401: token 过期，尝试刷新
+      // 401: token 过期
       if (res.code === 401) {
-        return handleTokenExpired(response)
+        notifyMiniProgramTokenExpired()
+        return Promise.reject(new Error('TOKEN_EXPIRED'))
       }
 
       return Promise.reject(new Error(res.message || 'Error'))
@@ -60,8 +88,8 @@ service.interceptors.response.use(
           break
         case 401:
           message = '未授权，请重新登录'
-          // 刷新 token 逻辑
-          return handleTokenExpired(error.response)
+          notifyMiniProgramTokenExpired()
+          break
         case 403:
           message = '拒绝访问'
           break
@@ -93,63 +121,6 @@ service.interceptors.response.use(
     return Promise.reject(error)
   }
 )
-
-// 处理 token 过期
-function handleTokenExpired(response) {
-  return new Promise((resolve) => {
-    if (!isRefreshing) {
-      isRefreshing = true
-
-      const refreshToken = localStorage.getItem('refreshToken')
-      if (!refreshToken) {
-        // 没有 refresh token，直接跳转登录
-        localStorage.removeItem('token')
-        localStorage.removeItem('refreshToken')
-        router.push('/login')
-        return resolve(Promise.reject(new Error('未登录')))
-      }
-
-      // 调用刷新 token 接口
-      axios.post(`${process.env.VUE_APP_BASE_API}/auth/refresh`, {
-        refreshToken
-      }).then(res => {
-        const { token, refreshToken: newRefreshToken } = res.data
-        localStorage.setItem('token', token)
-        localStorage.setItem('refreshToken', newRefreshToken)
-
-        // 更新原请求 header
-        if (response) {
-          response.config.headers['Authorization'] = `Bearer ${token}`
-        }
-
-        // 重试队列中的请求
-        requestsQueue.forEach(cb => cb(token))
-        requestsQueue = []
-
-        // 重试原请求
-        return resolve(axios(response.config))
-      }).catch(() => {
-        localStorage.removeItem('token')
-        localStorage.removeItem('refreshToken')
-        router.push('/login')
-        requestsQueue = []
-        resolve(Promise.reject(new Error('登录已过期')))
-      }).finally(() => {
-        isRefreshing = false
-      })
-    } else {
-      // 正在刷新 token，将请求加入队列
-      return new Promise((resolve2) => {
-        requestsQueue.push((token) => {
-          if (response) {
-            response.config.headers['Authorization'] = `Bearer ${token}`
-          }
-          resolve2(axios(response.config))
-        })
-      })
-    }
-  })
-}
 
 /**
  * 封装请求方法
