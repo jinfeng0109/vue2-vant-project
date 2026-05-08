@@ -25,6 +25,12 @@ const routes = [
     name: 'About',
     component: () => import('@/views/About.vue'),
     meta: { title: '关于' }
+  },
+  {
+    path: '/map',
+    name: 'Map',
+    component: () => import('@/views/Map.vue'),
+    meta: { title: '天地图', isPublic: true }
   }
 ]
 
