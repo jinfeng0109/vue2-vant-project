@@ -3,19 +3,11 @@
     <!-- 左上角图层控制面板 -->
     <div class="layer-panel">
       <div class="panel-title">图层控制</div>
-      <van-checkbox-group v-model="checkedLayers" direction="horizontal">
-        <van-cell-group inset>
-          <van-cell title="项目区范围">
-            <van-checkbox name="projectRange" slot="right-icon" />
-          </van-cell>
-          <van-cell title="设施">
-            <van-checkbox name="facility" slot="right-icon" />
-          </van-cell>
-          <van-cell title="新增耕地">
-            <van-checkbox name="newFarmland" slot="right-icon" />
-          </van-cell>
-        </van-cell-group>
-      </van-checkbox-group>
+      <div class="checkbox-list">
+        <van-checkbox name="projectRange" v-model="rangeChecked">项目区范围</van-checkbox>
+        <van-checkbox name="facility" v-model="facilityChecked">设施</van-checkbox>
+        <van-checkbox name="newFarmland" v-model="farmlandChecked">新增耕地</van-checkbox>
+      </div>
     </div>
 
     <!-- 返回按钮 -->
@@ -37,6 +29,9 @@ export default {
       token: '',
       // 选中的图层（checkbox 对应 name）
       checkedLayers: [],
+      rangeChecked: false,
+      facilityChecked: false,
+      farmlandChecked: false,
       // 图层对象引用
       layers: {}
     }
@@ -224,12 +219,20 @@ export default {
   },
   // checkbox 变化时同步图层显隐
   watch: {
-    checkedLayers(val) {
-      Object.keys(this.layers).forEach((key) => {
-        if (this.layers[key]) {
-          this.layers[key].visible = val.includes(key)
-        }
-      })
+    rangeChecked(val) {
+      if (this.layers.projectRange) {
+        this.layers.projectRange.visible = val
+      }
+    },
+    facilityChecked(val) {
+      if (this.layers.facility) {
+        this.layers.facility.visible = val
+      }
+    },
+    farmlandChecked(val) {
+      if (this.layers.newFarmland) {
+        this.layers.newFarmland.visible = val
+      }
     }
   },
   beforeDestroy() {
@@ -295,5 +298,17 @@ export default {
   color: #969799;
   padding: 4px 16px 6px;
   letter-spacing: 0.5px;
+}
+
+.checkbox-list {
+  padding: 4px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* checkbox 图标和文字间隔 2px */
+.checkbox-list ::v-deep .van-checkbox__label {
+  margin-left: 2px;
 }
 </style>
